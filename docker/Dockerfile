@@ -35,8 +35,10 @@ RUN apt-get update && apt-get install -y \
     bc \
     bison \
     build-essential \
+    brotli \
     ccache \
     curl \
+    erofs-utils \
     flex \
     g++-multilib \
     gcc-multilib \

@@ -66,6 +66,9 @@ services:
       - SYS_ADMIN
       - NET_ADMIN
 
+    # Privileged mode (needed for mount operations)
+    privileged: true
+
     # Device access (for USB if needed)
     # devices:
     #   - /dev/bus/usb:/dev/bus/usb

@@ -76,10 +76,8 @@ cat > /home/builder/android/lineage/.repo/local_manifests/beyondx.xml <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <manifest>
   <!-- Samsung Galaxy S10 5G proprietary blobs -->
-  <project name="TheMuppets/proprietary_vendor_samsung"
-           path="vendor/samsung"
-           remote="github"
-           revision="lineage-22.2" />
+  <!-- TheMuppets doesn't have lineage-22.2 branch yet, skipping for now -->
+  <!-- Will use extract-files.sh or manual download instead -->
 </manifest>
 EOF
 
