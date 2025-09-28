@@ -10,13 +10,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LANGUAGE=en_US:en \
     LC_ALL=en_US.UTF-8
 
-# Create builder user to avoid running as root
-RUN useradd -m -s /bin/bash builder && \
-    echo 'builder ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
-
-# Update and install base packages
+# Update and install base packages first (without sudo)
 RUN apt-get update && apt-get install -y \
-    sudo \
     curl \
     wget \
     git \
@@ -27,6 +22,13 @@ RUN apt-get update && apt-get install -y \
     tzdata \
     && locale-gen en_US.UTF-8 \
     && rm -rf /var/lib/apt/lists/*
+
+# Install sudo separately
+RUN apt-get update && apt-get install -y sudo && rm -rf /var/lib/apt/lists/*
+
+# Create builder user after sudo is installed
+RUN useradd -m -s /bin/bash builder && \
+    echo 'builder ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
 # Install build dependencies as per LineageOS requirements
 RUN apt-get update && apt-get install -y \

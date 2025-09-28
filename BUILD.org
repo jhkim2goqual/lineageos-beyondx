@@ -1,0 +1,355 @@
+#+title: Build LineageOS for Samsung Galaxy S10 5G beyondx
+
+https://wiki.lineageos.org/devices/beyondx/build/
+
+** Introduction
+
+These instructions will hopefully assist you to start with a stock Samsung Galaxy S10 5G, unlock the bootloader (if necessary), and then download the required tools as well as the very latest source code for LineageOS (based on Google’s Android operating system) for your device. Using these, you can build both a LineageOS installation zip and a LineageOS Recovery image and install them on your device.
+
+It is difficult to say how much experience is necessary to follow these instructions. While this guide is certainly not for the extremely uninitiated, these steps shouldn’t require a PhD in software development either. Some readers will have no difficulty and breeze through the steps easily. Others may struggle over the most basic operation. Because people’s experiences, backgrounds, and intuitions differ, it may be a good idea to read through just to ascertain whether you feel comfortable or are getting over your head.
+
+Remember, you assume all risk of trying this, but you will reap the rewards! It’s pretty satisfying to boot into a fresh operating system you baked at home :). And once you’re an Android-building ninja, there will be no more need to wait for “nightly” builds from anyone. You will have at your fingertips the skills to build a full operating system from code and install it to a running device, whenever you want. Where you go from there– maybe you’ll add a feature, fix a bug, add a translation, or use what you’ve learned to build a new app or port to a new device– or maybe you’ll never build again– it’s all really up to you.
+
+*** What you’ll need
+
+- A Samsung Galaxy S10 5G.
+- A relatively recent x86\_64 computer:
+  - Linux, macOS, or Windows - these build instructions are only tested using Ubuntu 20.04 LTS, so we recommend going with that.
+  - A reasonable amount of RAM (16 GB to build up to =lineage-17.1=, 32 GB or more for =lineage-18.1=  and up). The less RAM you have, the longer the build will take. Enabling ZRAM can be helpful.
+  - A reasonable amount of Storage (200 GB to build up to =lineage-17.1=, 300 GB for =lineage-18.1= and up). You might require more free space for enabling =ccache=  or building for multiple devices. Using SSDs results in considerably faster build times than traditional hard drives.
+- A decent internet connection and reliable electricity. :)
+- Some familiarity with basic Android operation and terminology. It may be useful to know some basic command line concepts such as =cd=, which stands for “change directory”, the concept of directory hierarchies, and that in Linux they are separated by =/= , etc.
+
+/check/
+
+*Tip:* If you are not accustomed to using Linux, this is an excellent chance to learn. It’s free – just download and run a virtual machine (VM) such as [[https://www.virtualbox.org][VirtualBox]], then install a Linux distribution such as [[https://www.ubuntu.com][Ubuntu]] ([[https://source.android.com/source/initializing.html][AOSP vets Ubuntu as well]]). Any recent 64-bit version should work great, but the latest Long Term Support (LTS) version is recommended. There are plenty of instructions on setting up VirtualBox to run Ubuntu, so we’ll leave that to you. Though it is worth noting, if you already use either a Linux distro or macOS, you can just proceed.
+
+Let’s begin!
+
+** Build LineageOS
+
+/info\_outline/
+
+*Note:* You only need to do these steps once. If you have already prepared your build environment and downloaded the source code, skip to [[https://wiki.lineageos.org/devices/beyondx/build/#prepare-the-device-specific-code][Prepare the device-specific code]]
+
+*** Install the platform-tools
+
+If you haven’t previously installed =adb= and =fastboot=, you can [[https://dl.google.com/android/repository/platform-tools-latest-linux.zip][download them from Google]]. Extract it running:
+
+#+begin_src c
+unzip platform-tools-latest-linux.zip -d ~
+
+#+end_src
+
+/check/
+
+*Tip:*  The file may not be named identically to what stands in this command, so adjust accordingly.
+
+Now you have to add =adb= and =fastboot= to your PATH. Open =~/.profile=  and add the following:
+
+#+begin_src c
+# add Android SDK platform tools to path
+if [ -d "$HOME/platform-tools" ] ; then
+    PATH="$HOME/platform-tools:$PATH"
+fi
+
+#+end_src
+
+Then, run =source ~/.profile=  to update your environment.
+
+*** Install the build packages
+
+Several packages are needed to build LineageOS. You can install these using your distribution’s package manager.
+
+/check/
+
+*Tip:* A [[https://en.wikipedia.org/wiki/Package_manager][package manager]] in Linux is a system used to install or remove software (usually originating from the Internet) on your computer. With Ubuntu, you can use the Ubuntu Software Center. Even better, you may also use the =apt install=  command directly in the Terminal.
+
+To build LineageOS, you’ll need:
+
+- =bc bison build-essential ccache curl flex g++-multilib gcc-multilib git git-lfs gnupg gperf imagemagick protobuf-compiler python3-protobuf lib32readline-dev lib32z1-dev libdw-dev libelf-dev lz4 libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev=
+
+For Ubuntu 23.10 (mantic) or newer, install =libncurses5=  from 23.04 (lunar) as follows:
+
+#+begin_src c
+wget https://archive.ubuntu.com/ubuntu/pool/universe/n/ncurses/libtinfo5_6.3-2_amd64.deb && sudo dpkg -i libtinfo5_6.3-2_amd64.deb && rm -f libtinfo5_6.3-2_amd64.deb
+wget https://archive.ubuntu.com/ubuntu/pool/universe/n/ncurses/libncurses5_6.3-2_amd64.deb && sudo dpkg -i libncurses5_6.3-2_amd64.deb && rm -f libncurses5_6.3-2_amd64.deb
+
+#+end_src
+
+While for Ubuntu versions older than 23.10 (mantic), simply install:
+
+- =lib32ncurses5-dev libncurses5 libncurses5-dev=
+
+Additionally, for Ubuntu versions older than 20.04 (focal), install also:
+
+- =libwxgtk3.0-dev=
+
+While for Ubuntu versions older than 16.04 (xenial), install:
+
+- =libwxgtk2.8-dev=
+
+**** Java
+
+Different versions of LineageOS require different JDK (Java Development Kit) versions.
+
+- LineageOS 18.1+: OpenJDK 11 (included in source download)
+- LineageOS 16.0-17.1: OpenJDK 1.9 (included in source download)
+- LineageOS 14.1-15.1: OpenJDK 1.8 (install =openjdk-8-jdk= )
+  - NOTE: For building these versions you’ll need to remove =TLSv1= and =TLSv1.1= from =jdk.tls.disabledAlgorithms= in =/etc/java-8-openjdk/security/java.security= .
+- LineageOS 11.0-13.0: OpenJDK 1.7 (install =openjdk-7-jdk= )\*
+
+\* Ubuntu 16.04 and newer do not have OpenJDK 1.7 in the standard package repositories. See the /Ask Ubuntu/  question “[[http://askubuntu.com/questions/761127/how-do-i-install-openjdk-7-on-ubuntu-16-04-or-higher][How do I install openjdk 7 on Ubuntu 16.04 or higher?]]”. Note that the suggestion to use PPA openjdk-r is outdated (the PPA has never updated their offering of openjdk-7-jdk, so it lacks security fixes); skip that answer even if it is the most upvoted.
+
+**** Python
+
+Different versions of LineageOS require different default Python versions.
+
+- LineageOS 17.1+: Python 3 (install =python-is-python3= )
+- LineageOS 11.0-16.0: Python 2 (install =python-is-python2= )
+
+If your default is =python3=, but you’re building branch that requires =python2=, there are various methods to using it, e.g. [[https://stackoverflow.com/a/66129356][symlinking it manually]] or creating a [[https://pypi.org/project/virtualenv/][virtualenv]] for it. We recommend the latter:
+
+Generate the virtualenv once using
+
+: virtualenv --python=python2 ~/.lineage_venv
+
+. Afterwards, activate it in each terminal where you need =python2= as default by running =~/.lineage_venv/bin/activate= .
+
+The path =~/.lineage_venv=  can be chosen freely, this is just an example!
+
+*** Create the directories
+
+You’ll need to set up some directories in your build environment.
+
+To create them:
+
+#+begin_src c
+mkdir -p ~/bin
+mkdir -p ~/android/lineage
+
+#+end_src
+
+The =~/bin= directory will contain the git-repo tool (commonly named “repo”) and the =~/android/lineage=  directory will contain the source code of LineageOS.
+
+*** Install the =repo=  command
+
+Enter the following to download the =repo=  binary and make it executable (runnable):
+
+#+begin_src c
+curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+chmod a+x ~/bin/repo
+
+#+end_src
+
+*** Put the =~/bin=  directory in your path of execution
+
+In recent versions of Ubuntu, =~/bin= should already be in your PATH. You can check this by opening =~/.profile=  with a text editor and verifying the following code exists (add it if it is missing):
+
+#+begin_src c
+# set PATH so it includes user's private bin if it exists
+if [ -d "$HOME/bin" ] ; then
+    PATH="$HOME/bin:$PATH"
+fi
+
+#+end_src
+
+Then, run =source ~/.profile=  to update your environment.
+
+*** Configure git
+
+Given that =repo= requires you to identify yourself to sync Android, run the following commands to configure your =git=  identity:
+
+#+begin_src c
+git config --global user.email "you@example.com"
+git config --global user.name "Your Name"
+
+#+end_src
+
+Due to their size, some repos are configured for [[https://git-lfs.com/][=lfs= or =Large File Storage=]]. To make sure your distribution is prepared for this, run:
+
+#+begin_src c
+git lfs install
+
+#+end_src
+
+To avoid duplicated =Change-Id:= trailers in commit messages, especially when cherry-picking changes, make =Change-Id:=  a known trailer to git:
+
+#+begin_src c
+git config --global trailer.changeid.key "Change-Id"
+
+#+end_src
+
+*** Turn on caching to speed up build
+
+Make use of [[https://ccache.samba.org/][=ccache=]] if you want to speed up subsequent builds by running:
+
+#+begin_src c
+export USE_CCACHE=1
+export CCACHE_EXEC=/usr/bin/ccache
+
+#+end_src
+
+and adding that line to your =~/.bashrc= file. Then, specify the maximum amount of disk space you want =ccache=  to use by typing this:
+
+#+begin_src c
+ccache -M 50G
+
+#+end_src
+
+where =50G=  corresponds to 50GB of cache. This needs to be run once. Anywhere from 25GB-100GB will result in very noticeably increased build speeds (for instance, a typical 1hr build time can be reduced to 20min). If you’re only building for one device, 25GB-50GB is fine. If you plan to build for several devices that do not share the same kernel source, aim for 75GB-100GB. This space will be permanently occupied on your drive, so take this into consideration.
+
+You can also enable the optional =ccache=  compression. While this may involve a slight performance slowdown, it increases the number of files that fit in the cache. To enable it, run:
+
+#+begin_src c
+ccache -o compression=true
+
+#+end_src
+
+/info\_outline/
+
+*Note:* If compression is enabled, the =ccache=  size can be lower (aim for approximately 20GB for one device).
+
+*** Initialize the LineageOS source repository
+
+The following branches are officially supported for the Samsung Galaxy S10 5G:
+
+- lineage-18.1
+
+- lineage-19.1
+
+- lineage-20.0
+
+- lineage-21.0
+
+- lineage-22.1
+
+- lineage-22.2
+
+
+Enter the following to initialize the repository:
+
+/info\_outline/
+
+*Note:*  Make sure the branch you enter here is the one you wish to build!
+
+#+begin_src c
+cd ~/android/lineage
+repo init -u https://github.com/LineageOS/android.git -b lineage-22.2 --git-lfs --no-clone-bundle
+
+#+end_src
+
+*** Download the source code
+
+To start the download of the source code to your computer, type the following:
+
+#+begin_src c
+repo sync
+
+#+end_src
+
+The LineageOS manifests include a sensible default configuration for repo, which we strongly suggest you use (i.e. don’t add any options to sync). For reference, our default values are =-j 4= and =-c=. The =-j 4= part implies be four simultaneous threads/connections. If you experience problems syncing, you can lower this to =-j 3= or =-j 2=. On the other hand, =-c=  makes repo to pull in only the current branch instead of all branches that are available on GitHub.
+
+/info\_outline/
+
+*Note:*  This may take a while, depending on your internet speed. Go and have a beer/coffee/tea/nap in the meantime!
+
+/check/
+
+*Tip:* The =repo sync= command is used to update the latest source code from LineageOS and Google. Remember it, as you may want to do it every few days to keep your code base fresh and up-to-date. But note, if you make any changes, running =repo sync=  may wipe them away!
+
+*** Preparing the build environment
+
+Go to the root of the source code:
+
+#+begin_src c
+cd ~/android/lineage
+
+#+end_src
+
+Setup your build environment:
+
+#+begin_src c
+source build/envsetup.sh
+
+#+end_src
+
+The rest of this guide will rely on this being done. You can check the proper execution of the commands by typing:
+
+#+begin_src c
+croot
+
+#+end_src
+
+Your shell will then navigate to the root of the sources, =~/android/lineage=  or give an error.
+
+*** Prepare the device-specific code
+
+#+begin_src c
+breakfast beyondx
+
+#+end_src
+
+This will download your device’s [[https://github.com/LineageOS/android_device_samsung_beyondx][device specific configuration]] and [[https://github.com/LineageOS/android_kernel_samsung_exynos9820][kernel]].
+
+/warning/
+
+*Important:* Some devices require a vendor directory to be populated before breakfast will succeed. If you receive an error here about vendor makefiles, jump down to [[https://wiki.lineageos.org/devices/beyondx/build/#extract-proprietary-blobs][/Extract proprietary blobs/]]. The first portion of breakfast should have succeeded, and after completing you can [[https://wiki.lineageos.org/devices/beyondx/build/#prepare-the-device-specific-code][rerun =breakfast=]]
+
+*** Extract proprietary blobs
+
+/info\_outline/
+
+*Note:* This step requires to have a device already running the latest LineageOS, based on the branch you wish to build for. If you don’t have access to such device, refer to [[https://wiki.lineageos.org/extracting_blobs_from_zips.html][Extracting proprietary blobs from installable zip]].
+
+Now ensure your Samsung Galaxy S10 5G is connected to your computer via the USB cable, with ADB and root enabled, and that you are in the =~/android/lineage/device/samsung/beyondx= folder. Then run either the =extract-files.sh= or =extract-files.py=  script:
+
+#+begin_src c
+./extract-files.sh
+
+#+end_src
+
+Or, for the Python script:
+
+#+begin_src c
+./extract-files.py
+
+#+end_src
+
+The blobs should be pulled into the =~/android/lineage/vendor/samsung= folder. If you see “command not found” errors, =adb= may need to be placed in =~/bin= .
+
+*** Start the build
+
+Time to start building! Now, type:
+
+#+begin_src c
+croot
+brunch beyondx
+
+#+end_src
+
+The build should begin.
+
+/check/
+
+*Tip:* Want to learn how to sign your own builds? Take a look at [[https://wiki.lineageos.org/signing_builds.html][Signing builds]].
+
+** Install the build
+
+Assuming the build completed without errors (it will be obvious when it finishes), type the following in the terminal window the build ran in:
+
+#+begin_src c
+cd $OUT
+
+#+end_src
+
+There you’ll find all the files that were created. The two files of more interest are:
+
+1. =recovery.img= , which is the LineageOS recovery image.
+2. =lineage-22.2-20250926-UNOFFICIAL-beyondx.zip= , which is the LineageOS installer package.
+
+*** Success! So… what’s next?
+
+You’ve done it! Welcome to the elite club of self-builders. You’ve built your operating system from scratch, from the ground up. You are the master/mistress of your domain… and hopefully you’ve learned a bit on the way and had some fun too.
+
+** To get assistance
