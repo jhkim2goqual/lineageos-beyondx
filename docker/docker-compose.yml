@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  lineageos-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: lineageos-beyondx:latest
+    container_name: lineageos-beyondx-builder
+    hostname: lineageos-builder
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '16'
+          memory: 32G
+        reservations:
+          cpus: '4'
+          memory: 16G
+
+    # Environment variables
+    env_file:
+      - ../config/build-config.env
+
+    environment:
+      - CCACHE_SIZE=50G
+      - GIT_USER_EMAIL=${GIT_USER_EMAIL:-builder@localhost}
+      - GIT_USER_NAME=${GIT_USER_NAME:-LineageOS Builder}
+      - ANDROID_JACK_VM_ARGS=-Dfile.encoding=UTF-8 -XX:+TieredCompilation -Xmx16g
+      - TZ=Asia/Seoul
+
+    # Volume mappings
+    volumes:
+      # Source code (persistent)
+      - ../volumes/lineage-source:/home/builder/android/lineage
+
+      # Build cache (persistent)
+      - ../volumes/ccache:/home/builder/.ccache
+
+      # Build output
+      - ../volumes/output:/home/builder/output
+
+      # Downloads (for official builds comparison)
+      - ../volumes/downloads:/home/builder/downloads
+
+      # Build scripts
+      - ../scripts:/home/builder/scripts:ro
+
+      # Config files
+      - ../config:/home/builder/config:ro
+
+      # Docker socket (optional, for nested containers)
+      # - /var/run/docker.sock:/var/run/docker.sock
+
+    # Network settings
+    network_mode: bridge
+
+    # Security options
+    security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
+
+    # Capabilities (needed for some build operations)
+    cap_add:
+      - SYS_ADMIN
+      - NET_ADMIN
+
+    # Device access (for USB if needed)
+    # devices:
+    #   - /dev/bus/usb:/dev/bus/usb
+
+    # Keep container running
+    stdin_open: true
+    tty: true
+
+    # Working directory
+    working_dir: /home/builder/android/lineage
+
+    # Command
+    command: /bin/bash
+
+# Networks
+networks:
+  default:
+    driver: bridge
+
+# Volumes (named volumes alternative)
+# volumes:
+#   lineage-source:
+#     driver: local
+#   ccache:
+#     driver: local
+#   output:
+#     driver: local

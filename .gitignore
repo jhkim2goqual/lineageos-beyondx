@@ -1,0 +1,22 @@
+# Build volumes
+volumes/lineage-source/
+volumes/ccache/
+volumes/downloads/
+volumes/output/
+
+# Temporary files
+*.tmp
+*.log
+*.swp
+*~
+
+# IDE
+.vscode/
+.idea/
+
+# Docker
+.docker/
+
+# OS
+.DS_Store
+Thumbs.db
