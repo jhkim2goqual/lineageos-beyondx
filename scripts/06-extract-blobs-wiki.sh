@@ -67,6 +67,15 @@ sudo ./extract-files.py $DUMP_DIR/dump_copy
 sudo chown -R builder:builder $HOME/android/lineage/vendor/
 
 echo ""
+echo "Step 12b: Generate vendor makefiles"
+cd $DEVICE_DIR
+./setup-makefiles.py
+
+echo "Step 12c: Generate exynos9820-common vendor makefiles"
+cd $HOME/android/lineage/device/samsung/exynos9820-common
+./setup-makefiles.py
+
+echo ""
 echo "Step 13: Unmount vendor"
 sudo umount $DUMP_DIR/system/vendor
 
