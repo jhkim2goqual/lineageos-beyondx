@@ -19,7 +19,7 @@ if [ ! -f ~/.first_run_complete ]; then
     fi
 
     # Configure git-lfs
-    git lfs install
+    git lfs install 2>/dev/null || true
 
     # Set up ccache if not already configured
     if [ ! -f ~/.ccache/ccache.conf ]; then
