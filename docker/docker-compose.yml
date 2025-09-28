@@ -9,15 +9,15 @@ services:
     container_name: lineageos-beyondx-builder
     hostname: lineageos-builder
 
-    # Resource limits
+    # Resource limits (maximized for dedicated build)
     deploy:
       resources:
         limits:
+          cpus: '32'
+          memory: 64G
+        reservations:
           cpus: '16'
           memory: 32G
-        reservations:
-          cpus: '4'
-          memory: 16G
 
     # Environment variables
     env_file:
