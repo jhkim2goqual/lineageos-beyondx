@@ -32,4 +32,61 @@
   현재 상태를 새로운 대화에서 이어받아 마무리하시겠습니까?
 
 
+* NEXT 문제 상황 진행 중
 
+일단 문제 상황을 한번 정리해주세요. 수정한 스크립트도요 .한번 정리할 시점입니다.
+
+● 📋 현재 상황 정리
+
+  🔴 빌드 실패 상태
+
+  - CPU 사용률 0% - 빌드가 멈춤
+  - 에러: srcs: multiple prebuilt source files
+  - 원인: Android.bp에 libvkmanager_vendor의 srcs가 중복 정의됨
+
+  ✅ 지금까지 해결한 문제들
+
+  1. libvkmanager_vendor 의존성 문제
+    - extract-files.py에서 shim 매핑 주석 처리
+    - libvkmanager_vendor.so 파일을 exynos9820-common으로 복사
+    - Android.bp에 정의 추가 (하지만 중복 생성됨)
+  2. Android.mk endif 누락 문제
+    - beyondx/Android.mk에 endif 수동 추가
+
+  📁 생성한 자동화 스크립트들
+
+  1. fix-makefiles.sh
+    - Android.mk의 endif 누락 자동 수정
+    - ifeq 있지만 endif 없는 파일 감지 및 수정
+  2. fix-vendor-libs.sh
+    - libvkmanager_vendor.so 파일 자동 복사
+    - extract-files.py의 shim 매핑 자동 제거
+    - Android.bp에 libvkmanager_vendor 정의 추가
+    - 중복 srcs 제거 로직 포함
+  3. 04-build-lineage-auto.sh
+    - 위의 모든 수정사항을 자동 적용
+    - 빌드 진행 및 로그 저장
+
+  🐛 현재 남은 문제
+
+  Android.bp의 17-19줄에 중복된 srcs 정의:
+  target: {
+      android_arm64: {
+          srcs: ["proprietary/vendor/lib64/libvkmanager_vendor.so"],
+      },
+  },
+
+  💡 해결 방법
+
+  Android.bp에서 target 블록 밖의 srcs 라인을 제거해야 함
+
+  📊 진행률
+
+  - 소스 다운로드: ✅ 완료 (128GB)
+  - Proprietary blobs 추출: ✅ 완료 (215개 파일)
+  - 빌드 환경 구축: ✅ 완료
+  - 빌드: 🔴 초기 단계에서 실패 (Android.bp 문제)
+
+  다음 단계로 중복 srcs를 제거하고 빌드를 재시작해야 합니다.
+
+  📊 Tokens: 6500 in, 1200 out

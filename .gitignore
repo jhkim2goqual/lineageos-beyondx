@@ -3,6 +3,7 @@ volumes/lineage-source/
 volumes/ccache/
 volumes/downloads/
 volumes/output/
+images
 
 # Temporary files
 *.tmp
